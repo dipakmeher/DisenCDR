@@ -175,5 +175,6 @@ class CrossTrainer(Trainer):
                self.model.target_specific_GNN.encoder[-1].kld_loss + self.model.kld_loss
 
         loss.backward()
+        #torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
         self.optimizer.step()
         return loss.item()

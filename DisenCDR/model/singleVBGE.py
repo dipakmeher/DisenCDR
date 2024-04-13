@@ -168,6 +168,11 @@ class LastLayer(nn.Module):
         sigma_2 = torch.exp(0.1 + 0.9 * F.softplus(logsigma_2))
         # sigma_1 = 0.1 + 0.9 * F.softplus(torch.exp(logsigma_1))
         # sigma_2 = 0.1 + 0.9 * F.softplus(torch.exp(logsigma_2))
+        
+        # Clip mu_1 and sigma_1 to avoid NaN values
+        mu_1 = torch.clamp(mu_1, min=0.0001, max=0.9999)
+        sigma_1 = torch.clamp(sigma_1, min=0.0001, max=0.9999)
+        
         q_target = Normal(mu_1, sigma_1)
         q_context = Normal(mu_2, sigma_2)
         kl = kl_divergence(q_target, q_context).mean(dim=0).sum()
@@ -176,6 +181,10 @@ class LastLayer(nn.Module):
     def reparameters(self, mean, logstd):
         # sigma = 0.1 + 0.9 * F.softplus(torch.exp(logstd))
         sigma = torch.exp(0.1 + 0.9 * F.softplus(logstd))
+       
+        # Clip sigma to prevent extreme values
+        sigma = torch.clamp(sigma, min=0.0001, max=0.9999)
+
         gaussian_noise = torch.randn(mean.size(0), self.opt["hidden_dim"]).cuda(mean.device)
         if self.gc1.training:
             sampled_z = gaussian_noise * torch.exp(sigma) + mean

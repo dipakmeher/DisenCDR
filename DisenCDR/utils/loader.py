@@ -18,16 +18,16 @@ class DataLoader(object):
         self.eval = evaluation
 
         # ************* source data *****************
-        source_train_data = "../dataset/" + filename + "/train.txt"
-        source_test_data = "../dataset/" + filename + "/test.txt"
+        source_train_data = "/scratch/dmeher/DisenCDR/llmdataset/" + filename + "/train.txt"
+        source_test_data = "/scratch/dmeher/DisenCDR/llmdataset/" + filename + "/test.txt"
         self.source_ma_set, self.source_ma_list, self.source_train_data, self.source_test_data, self.source_user, self.source_item = self.read_data(source_train_data, source_test_data)
         opt["source_user_num"] = len(self.source_user)
         opt["source_item_num"] = len(self.source_item)
         # ************* target data *****************
         filename = filename.split("_")
         filename = filename[1] + "_" + filename[0]
-        target_train_data = "../dataset/" + filename + "/train.txt"
-        target_test_data = "../dataset/" + filename + "/test.txt"
+        target_train_data = "/scratch/dmeher/DisenCDR/llmdataset/" + filename + "/train.txt"
+        target_test_data = "/scratch/dmeher/DisenCDR/llmdataset/" + filename + "/test.txt"
         self.target_ma_set, self.target_ma_list, self.target_train_data, self.target_test_data, self.target_user, self.target_item = self.read_data(target_train_data, target_test_data)
         opt["target_user_num"] = len(self.target_user)
         opt["target_item_num"] = len(self.target_item)
@@ -93,7 +93,7 @@ class DataLoader(object):
                 line[1] = item[line[1]]
 
                 ret = [line[1]]
-                for i in range(999):
+                for i in range(20):
                     while True:
                         rand = random.randint(0, len(item)-1)
                         if rand in ma[line[0]]:
