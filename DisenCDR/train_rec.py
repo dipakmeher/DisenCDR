@@ -75,7 +75,7 @@ seed_everything(opt["seed"])
 
 if "DisenCDR" in opt["model"]:
     filename  = opt["dataset"]
-    source_graph = "../dataset/" + filename + "/train.txt"
+    source_graph = "/scratch/dmeher/DisenCDR/llmdataset/" + filename + "/train.txt"
     source_G = GraphMaker(opt, source_graph)
     source_UV = source_G.UV
     source_VU = source_G.VU
@@ -83,7 +83,7 @@ if "DisenCDR" in opt["model"]:
 
     filename = filename.split("_")
     filename = filename[1] + "_" + filename[0]
-    target_train_data = "../dataset/" + filename + "/train.txt"
+    target_train_data = "/scratch/dmeher/DisenCDR/llmdataset/" + filename + "/train.txt"
     target_G = GraphMaker(opt, target_train_data)
     target_UV = target_G.UV
     target_VU = target_G.VU
@@ -167,6 +167,8 @@ for epoch in range(1, opt['num_epoch'] + 1):
 
     trainer.evaluate_embedding(source_UV, source_VU, target_UV, target_VU, source_adj, target_adj)
 
+
+    '''
     NDCG = 0.0
     HT = 0.0
     valid_entity = 0.0
@@ -202,14 +204,86 @@ for epoch in range(1, opt['num_epoch'] + 1):
                 print('.', end='')
     t_ndcg = NDCG / valid_entity
     t_hit = HT / valid_entity
+    '''
+     
+    def calculate_metrics(source_dev_batch, trainer, topk=10):
+        NDCG = 0.0
+        HT = 0.0
+        MRR = 0.0
+        valid_entity = 0.0
+        for i, batch in enumerate(source_dev_batch):
+            predictions = trainer.source_predict(batch)
+            for pred in predictions:
+                rank = (-pred).argsort().argsort()[0].item()
+                valid_entity += 1
+                if rank < topk:
+                    NDCG += 1 / np.log2(rank + 2)
+                    HT += 1
+                    #if MRR == 0:  # Only update MRR for the first relevant item
+                    MRR += 1 / (rank+1)
+                if valid_entity % 100 == 0:
+                    print('.', end='')
 
+        s_ndcg = NDCG / valid_entity
+        s_hit = HT / valid_entity
+        s_mrr = MRR / valid_entity
+
+        return s_ndcg, s_hit, s_mrr
+
+     #Calculate metrics for topk=10
+    s_ndcg_10, s_hit_10, s_mrr_10 = calculate_metrics(source_dev_batch, trainer, topk=10)
+    # Calculate metrics for topk=5
+    s_ndcg_5, s_hit_5, s_mrr_5 = calculate_metrics(source_dev_batch, trainer, topk=5)
+
+
+
+    def calculate_metrics_target(target_dev_batch, trainer, topk=10):
+        NDCG = 0.0
+        HT = 0.0
+        MRR = 0.0
+        valid_entity = 0.0
+        for i, batch in enumerate(target_dev_batch):
+            predictions = trainer.target_predict(batch)
+            for pred in predictions:
+                rank = (-pred).argsort().argsort()[0].item()
+                valid_entity += 1
+                if rank < topk:
+                    NDCG += 1 / np.log2(rank + 2)
+                    HT += 1
+                    #if MRR == 0:  # Only update MRR for the first relevant item
+                    MRR += 1 / (rank+1)
+                if valid_entity % 100 == 0:
+                    print('.', end='')
+
+        t_ndcg = NDCG / valid_entity
+        t_hit = HT / valid_entity
+        t_mrr = MRR / valid_entity
+
+        return t_ndcg, t_hit, t_mrr
+            
+     #Calculate metrics for topk=10
+    t_ndcg_10, t_hit_10, t_mrr_10 = calculate_metrics_target(target_dev_batch, trainer, topk=10)
+    # Calculate metrics for topk=5
+    t_ndcg_5, t_hit_5, t_mrr_5 = calculate_metrics_target(target_dev_batch, trainer, topk=5)
+    
+
+    '''
     print(
         "epoch {}: train_loss = {:.6f}, source_hit = {:.4f}, source_ndcg = {:.4f}, target_hit = {:.4f}, target_ndcg = {:.4f}".format(
             epoch, \
             train_loss, s_hit, s_ndcg, t_hit, t_ndcg))
-    dev_score = t_ndcg
-    file_logger.log(
-        "{}\t{:.6f}\t{:.4f}\t{:.4f}".format(epoch, train_loss, dev_score, max([dev_score] + dev_score_history)))
+    '''
+
+    print(f"Epoch {epoch}: train_loss = {train_loss:.6f}")
+    print(f"Source Metrics (Top-10): HIT = {s_hit_10:.4f}, NDCG = {s_ndcg_10:.4f}, MRR = {s_mrr_10:.4f}")
+    #print(f"Source Metrics (Top-5): HIT = {s_hit_5:.4f}, NDCG = {s_ndcg_5:.4f}, MRR = {s_mrr_5:.4f}")
+    print(f"Target Metrics (Top-10): HIT = {t_hit_10:.4f}, NDCG = {t_ndcg_10:.4f}, MRR = {t_mrr_10:.4f}")
+    print(f"Source Metrics (Top-5): HIT = {s_hit_5:.4f}, NDCG = {s_ndcg_5:.4f}, MRR = {s_mrr_5:.4f}")
+    print(f"Target Metrics (Top-5): HIT = {t_hit_5:.4f}, NDCG = {t_ndcg_5:.4f}, MRR = {t_mrr_5:.4f}")
+
+    dev_score = t_ndcg_10
+    #file_logger.log(
+     #   "{}\t{:.6f}\t{:.4f}\t{:.4f}".format(epoch, train_loss, dev_score, max([dev_score] + dev_score_history)))
 
     # save
     if epoch == 1 or dev_score > max(dev_score_history):
